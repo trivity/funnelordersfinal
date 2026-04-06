@@ -104,7 +104,8 @@
       "Bash(curl -s http://localhost:3000)",
       "Bash(npm install:*)",
       "Bash(pnpm update:*)",
-      "Bash(ls \"/c/Users/trivi/OneDrive/Desktop/AI WEBSITES/FunnelOrders/apps/web/src/app/\\(auth\\)/\")"
+      "Bash(ls \"/c/Users/trivi/OneDrive/Desktop/AI WEBSITES/FunnelOrders/apps/web/src/app/\\(auth\\)/\")",
+      "Bash(ls \"/c/Users/trivi/OneDrive/Desktop/AI WEBSITES/FunnelOrders/apps/web/src/app/\\(dashboard\\)/admin/\")"
     ]
   }
 }

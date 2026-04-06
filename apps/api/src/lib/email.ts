@@ -1,9 +1,14 @@
 import { Resend } from 'resend';
 import { config } from './env';
+import { getConfig } from '../services/appConfig.service';
 
-const resend = new Resend(config.RESEND_API_KEY);
+async function getResendClient(): Promise<Resend> {
+  const dbKey = await getConfig('RESEND_API_KEY');
+  return new Resend(dbKey || config.RESEND_API_KEY);
+}
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
+  const resend = await getResendClient();
   await resend.emails.send({
     from: 'FunnelOrders <noreply@funnelorders.com>',
     to,

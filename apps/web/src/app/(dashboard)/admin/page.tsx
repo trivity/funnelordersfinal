@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, ShoppingBag, Activity, Shield, Trash2, UserX, UserCheck, Key, RefreshCw, DollarSign } from 'lucide-react';
+import { Users, ShoppingBag, Activity, Shield, Trash2, UserX, UserCheck, Key, RefreshCw, DollarSign, Mail } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
@@ -240,6 +240,52 @@ interface ConfigData {
   STRIPE_PRICE_STARTER?: string;
   STRIPE_PRICE_GROWTH?: string;
   STRIPE_PRICE_AGENCY?: string;
+  RESEND_API_KEY?: string;
+}
+
+function EmailConfigPanel({ config, saveMutation }: { config: ConfigData | undefined; saveMutation: ReturnType<typeof useMutation<void, Error, Record<string, string>>> }) {
+  const [resendKey, setResendKey] = useState('');
+
+  const handleSave = () => {
+    if (!resendKey) { toast.info('No changes to save'); return; }
+    saveMutation.mutate({ RESEND_API_KEY: resendKey });
+    setResendKey('');
+  };
+
+  return (
+    <div className="border border-border rounded-lg p-6 bg-white">
+      <div className="flex items-center gap-2 mb-4">
+        <Mail className="w-5 h-5 text-primary" />
+        <h2 className="font-semibold">Email Config (Resend)</h2>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Override the Resend API key used for sending password reset emails. Takes effect immediately.
+      </p>
+      <div>
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1">
+          Resend API Key
+        </label>
+        {config?.RESEND_API_KEY && (
+          <p className="text-xs text-muted-foreground mb-1 font-mono">Current: {config.RESEND_API_KEY.slice(0, 8)}••••••••</p>
+        )}
+        <input
+          type="password"
+          value={resendKey}
+          onChange={(e) => setResendKey(e.target.value)}
+          placeholder="re_..."
+          className="w-full border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+        />
+      </div>
+      <button
+        onClick={handleSave}
+        disabled={saveMutation.isPending}
+        className="mt-4 flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium disabled:opacity-50"
+      >
+        <Key className="w-4 h-4" />
+        {saveMutation.isPending ? 'Saving...' : 'Save Key'}
+      </button>
+    </div>
+  );
 }
 
 function StripeConfigPanel() {
@@ -347,6 +393,9 @@ function StripeConfigPanel() {
           {saveMutation.isPending ? 'Saving...' : 'Save Keys'}
         </button>
       </div>
+
+      {/* Email Config */}
+      <EmailConfigPanel config={config} saveMutation={saveMutation} />
 
       {/* Package Pricing */}
       <div className="border border-border rounded-lg p-6 bg-white">

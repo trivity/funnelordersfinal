@@ -7,6 +7,7 @@ export const CONFIG_KEYS = {
   STRIPE_PRICE_STARTER: 'STRIPE_PRICE_STARTER',
   STRIPE_PRICE_GROWTH: 'STRIPE_PRICE_GROWTH',
   STRIPE_PRICE_AGENCY: 'STRIPE_PRICE_AGENCY',
+  RESEND_API_KEY: 'RESEND_API_KEY',
 } as const;
 
 export async function getConfig(key: string): Promise<string | null> {
