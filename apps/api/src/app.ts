@@ -19,6 +19,9 @@ import storesRoutes from './routes/stores.routes';
 export function createApp() {
   const app = express();
 
+  // Trust Railway's proxy (required for rate limiting and IP detection)
+  app.set('trust proxy', 1);
+
   // Security headers
   app.use(helmet());
 
