@@ -2,6 +2,11 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import api, { setStoreId } from '@/lib/api';
 
+/** Call this on login/logout to wipe any stale storeId from a previous session */
+export function clearPersistedStore() {
+  try { localStorage.removeItem('fo-active-store'); } catch { /* noop */ }
+}
+
 export interface Store {
   id: string;
   name: string;

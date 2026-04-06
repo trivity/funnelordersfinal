@@ -18,9 +18,9 @@ export async function listOrders(
     storeId?: string;
   },
 ) {
-  // When scoped to a store, also include orders with storeId: null that belong to the user
+  // Always scope by userId — storeId is an additional filter, never a replacement
   const where: Prisma.OrderWhereInput = opts.storeId
-    ? { OR: [{ storeId: opts.storeId }, { storeId: null, userId }] }
+    ? { userId, storeId: opts.storeId }
     : { userId };
   // If a specific status is requested use it; otherwise exclude ARCHIVED from the main list
   if (opts.status) {
@@ -59,7 +59,7 @@ export async function listOrders(
 }
 
 export async function getOrder(userId: string, orderId: string, storeId?: string) {
-  const where = storeId ? { id: orderId, storeId } : { id: orderId, userId };
+  const where = storeId ? { id: orderId, userId, storeId } : { id: orderId, userId };
   const order = await prisma.order.findFirst({
     where,
     include: { routingLogs: { orderBy: { createdAt: 'desc' } } },
@@ -132,7 +132,7 @@ export async function archiveOrder(userId: string, orderId: string, storeId?: st
 }
 
 export async function getOrderStats(userId: string, storeId?: string) {
-  const scope = storeId ? { storeId } : { userId };
+  const scope = storeId ? { userId, storeId } : { userId };
   const [total, byStatus, bySource] = await Promise.all([
     prisma.order.count({ where: scope }),
     prisma.order.groupBy({ by: ['status'], where: scope, _count: true }),

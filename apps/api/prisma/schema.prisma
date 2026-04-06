@@ -107,6 +107,7 @@ model User {
   notifyOnFailure      Boolean            @default(true)
   alertEmail           String?
   slackWebhookUrl      String?
+  trialEndsAt          DateTime?
 
   stores           Store[]
   integrations     Integration[]

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { setAccessToken, clearAuth } from '@/lib/api';
 import api from '@/lib/api';
+import { clearPersistedStore } from '@/stores/store.store';
 
 interface User {
   id: string;
@@ -14,6 +15,7 @@ interface User {
   notifyOnFailure: boolean;
   alertEmail: string | null;
   slackWebhookUrl: string | null;
+  trialEndsAt: string | null;
 }
 
 interface AuthState {
@@ -34,6 +36,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (email, password) => {
     set({ isLoading: true });
     try {
+      clearPersistedStore(); // wipe any stale storeId from a previous user
       const { data } = await api.post('/auth/login', { email, password });
       setAccessToken(data.data.accessToken as string);
       set({ user: data.data.user as User, isAuthenticated: true });
@@ -45,6 +48,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   register: async (email, password, firstName, lastName) => {
     set({ isLoading: true });
     try {
+      clearPersistedStore(); // wipe any stale storeId from a previous user
       const { data } = await api.post('/auth/register', { email, password, firstName, lastName });
       setAccessToken(data.data.accessToken as string);
       set({ user: data.data.user as User, isAuthenticated: true });
@@ -55,6 +59,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: async () => {
     await api.post('/auth/logout').catch(() => {});
+    clearPersistedStore();
     clearAuth();
     set({ user: null, isAuthenticated: false });
   },

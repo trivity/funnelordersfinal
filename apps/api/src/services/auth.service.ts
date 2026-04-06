@@ -26,9 +26,21 @@ export async function register(
   if (existing) throw new AppError('EMAIL_TAKEN', 'Email is already registered', 409);
 
   const passwordHash = await bcrypt.hash(password, 12);
+  const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
   const user = await prisma.user.create({
-    data: { email, passwordHash, firstName, lastName },
+    data: {
+      email,
+      passwordHash,
+      firstName,
+      lastName,
+      subscriptionStatus: 'TRIALING',
+      trialEndsAt,
+    },
   });
+
+  // Auto-create a default store for the new user
+  await prisma.store.create({ data: { userId: user.id, name: 'My Store' } });
 
   const accessToken = signAccessToken(user.id, user.email, user.role);
   const refreshToken = await createRefreshToken(user.id, undefined, undefined);
@@ -122,6 +134,7 @@ export function sanitizeUser(user: {
   notifyOnFailure?: boolean;
   alertEmail?: string | null;
   slackWebhookUrl?: string | null;
+  trialEndsAt?: Date | null;
 }) {
   return {
     id: user.id,
@@ -138,5 +151,6 @@ export function sanitizeUser(user: {
     notifyOnFailure: user.notifyOnFailure ?? true,
     alertEmail: user.alertEmail ?? null,
     slackWebhookUrl: user.slackWebhookUrl ?? null,
+    trialEndsAt: user.trialEndsAt ?? null,
   };
 }

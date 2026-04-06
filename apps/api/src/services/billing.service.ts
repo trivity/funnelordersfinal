@@ -92,11 +92,21 @@ export async function createCheckoutSession(userId: string, planTier: string): P
   }
 
   const priceId = await getPriceId(planTier);
+  // If the user is still in their trial window, carry the remaining days into Stripe
+  const user2 = await prisma.user.findUnique({ where: { id: userId } });
+  const trialDaysRemaining =
+    user2?.trialEndsAt && user2.trialEndsAt > new Date()
+      ? Math.ceil((user2.trialEndsAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      : 0;
+
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',
     payment_method_types: ['card'],
     line_items: [{ price: priceId, quantity: 1 }],
+    ...(trialDaysRemaining > 0 && {
+      subscription_data: { trial_period_days: trialDaysRemaining },
+    }),
     success_url: `${config.APP_URL}/settings/billing?success=1`,
     cancel_url: `${config.APP_URL}/settings/billing?canceled=1`,
     metadata: { userId, planTier },
