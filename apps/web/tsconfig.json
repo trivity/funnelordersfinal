@@ -1,5 +1,4 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "target": "ES2017",
     "lib": [
@@ -23,7 +22,14 @@
     },
     "allowJs": true,
     "noEmit": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitAny": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
   },
   "include": [
     "next-env.d.ts",
