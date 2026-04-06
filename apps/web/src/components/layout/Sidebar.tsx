@@ -29,7 +29,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 const navItems = [
-  { label: 'Home', href: '/', icon: Home },
+  { label: 'Home', href: '/dashboard', icon: Home },
   { label: 'Orders', href: '/orders', icon: ShoppingBag },
   { label: 'Archives', href: '/orders/archives', icon: Archive, sub: true },
   { label: 'Integrations', href: '/settings/integrations', icon: Plug },
