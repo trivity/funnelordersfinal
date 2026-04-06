@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Bell, Mail, Slack } from 'lucide-react';
+import { Bell, Mail, Hash } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
 
@@ -190,7 +190,7 @@ export default function ProfilePage() {
             {/* Slack webhook */}
             <div>
               <label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
-                <Slack className="w-3.5 h-3.5 text-muted-foreground" />
+                <Hash className="w-3.5 h-3.5 text-muted-foreground" />
                 Slack webhook URL
                 <span className="text-xs font-normal text-muted-foreground">(optional)</span>
               </label>
