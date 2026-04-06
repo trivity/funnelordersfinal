@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import type { OrderStatus, OrderSource } from '@funnelorders/shared-types';
+import type { OrderStatus, OrderSource } from '@/types/shared';
 
 const statusColors: Record<string, string> = {
   RECEIVED: 'bg-blue-100 text-blue-700',
