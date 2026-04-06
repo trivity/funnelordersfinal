@@ -4,6 +4,11 @@ import { validate, registerSchema, loginSchema, forgotPasswordSchema, resetPassw
 import { authenticate } from '../middleware/auth.middleware';
 import { success } from '../utils/response';
 import { AppError } from '../utils/AppError';
+import { prisma } from '../lib/prisma';
+import { nanoid } from 'nanoid';
+import bcrypt from 'bcryptjs';
+import { config } from '../lib/env';
+import { sendPasswordResetEmail } from '../lib/email';
 
 const router = Router();
 
@@ -66,8 +71,17 @@ router.post('/logout', async (req: Request, res: Response, next: NextFunction) =
   }
 });
 
-router.post('/forgot-password', async (_req: Request, res: Response, next: NextFunction) => {
+router.post('/forgot-password', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const body = validate(forgotPasswordSchema, req.body);
+    const user = await prisma.user.findUnique({ where: { email: body.email } });
+    if (user) {
+      const token = nanoid(48);
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      await prisma.passwordResetToken.create({ data: { userId: user.id, token, expiresAt } });
+      const resetUrl = `${config.APP_URL}/reset-password?token=${token}`;
+      await sendPasswordResetEmail(user.email, resetUrl);
+    }
     // Always return 200 to prevent email enumeration
     success(res, { message: 'If that email is registered, a reset link has been sent.' });
   } catch (err) {
@@ -75,11 +89,17 @@ router.post('/forgot-password', async (_req: Request, res: Response, next: NextF
   }
 });
 
-router.post('/reset-password', async (_req: Request, res: Response, next: NextFunction) => {
+router.post('/reset-password', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    validate(resetPasswordSchema, _req.body);
-    // TODO: implement token-based password reset in Phase 2
-    success(res, { message: 'Password reset' });
+    const body = validate(resetPasswordSchema, req.body);
+    const record = await prisma.passwordResetToken.findUnique({ where: { token: body.token } });
+    if (!record || record.usedAt || record.expiresAt < new Date()) {
+      throw new AppError('INVALID_TOKEN', 'Reset link is invalid or has expired', 400);
+    }
+    const passwordHash = await bcrypt.hash(body.password, 12);
+    await prisma.user.update({ where: { id: record.userId }, data: { passwordHash } });
+    await prisma.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } });
+    success(res, { message: 'Password has been reset. You can now log in.' });
   } catch (err) {
     next(err);
   }

@@ -14,4 +14,5 @@ export const config = {
   APP_URL: env.get('APP_URL').default('http://localhost:3000').asString(),
   API_URL: env.get('API_URL').default('http://localhost:3001').asString(),
   ENCRYPTION_KEY: env.get('ENCRYPTION_KEY').required().asString(),
+  RESEND_API_KEY: env.get('RESEND_API_KEY').default('').asString(),
 };

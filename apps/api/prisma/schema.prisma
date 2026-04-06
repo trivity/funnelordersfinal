@@ -107,10 +107,21 @@ model User {
   stores           Store[]
   integrations     Integration[]
   orders           Order[]
-  routingRules     RoutingRule[]
-  refreshTokens    RefreshToken[]
-  auditLogs        AuditLog[]
-  webhookEndpoints WebhookEndpoint[]
+  routingRules        RoutingRule[]
+  refreshTokens       RefreshToken[]
+  auditLogs           AuditLog[]
+  webhookEndpoints    WebhookEndpoint[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
 }
 
 model Store {
