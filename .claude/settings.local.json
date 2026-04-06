@@ -105,7 +105,17 @@
       "Bash(npm install:*)",
       "Bash(pnpm update:*)",
       "Bash(ls \"/c/Users/trivi/OneDrive/Desktop/AI WEBSITES/FunnelOrders/apps/web/src/app/\\(auth\\)/\")",
-      "Bash(ls \"/c/Users/trivi/OneDrive/Desktop/AI WEBSITES/FunnelOrders/apps/web/src/app/\\(dashboard\\)/admin/\")"
+      "Bash(ls \"/c/Users/trivi/OneDrive/Desktop/AI WEBSITES/FunnelOrders/apps/web/src/app/\\(dashboard\\)/admin/\")",
+      "Bash(curl -s -X POST https://funnelordersapi-production.up.railway.app/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"trivity@gmail.com\"\",\"\"password\"\":\"\"General123..\"\"}')",
+      "Bash(find '/c/Users/trivi/OneDrive/Desktop/AI WEBSITES/FunnelOrders/apps/api/src/services' -name *.ts)",
+      "Bash(grep -rn \"password\\\\|secret\\\\|key\\\\|token\" '/c/Users/trivi/OneDrive/Desktop/AI WEBSITES/FunnelOrders' --include=*.yml --include=*.yaml --include=*.json)",
+      "Bash(grep -rn process.env. '/c/Users/trivi/OneDrive/Desktop/AI WEBSITES/FunnelOrders/apps' --include=*.ts --include=*.tsx)",
+      "Bash(grep -rn \"router\\\\.\\(get\\\\|post\\\\|put\\\\|patch\\\\|delete\\)\" '/c/Users/trivi/OneDrive/Desktop/AI WEBSITES/FunnelOrders/apps/api/src/routes' --include=*.ts)",
+      "Bash(find \"/c/Users/trivi/OneDrive/Desktop/AI WEBSITES/FunnelOrders/apps/web/src/app/\\(dashboard\\)\" -maxdepth 1 -type f -name \"page.tsx\")",
+      "Bash(ls -la \"/c/Users/trivi/OneDrive/Desktop/AI WEBSITES/FunnelOrders/apps/web/src/app/\\(dashboard\\)/\")",
+      "Bash(xargs basename:*)",
+      "Bash(grep -r \"notification\\\\|alert\\\\|email\" '/c/Users/trivi/OneDrive/Desktop/AI WEBSITES/FunnelOrders/apps/api/src/services' --include=*.ts)",
+      "Bash(find \"/c/Users/trivi/OneDrive/Desktop/AI WEBSITES/FunnelOrders/apps/api/src\" -name \"*.ts\" -exec grep -l \"email\\\\|notification\\\\|alert\" {})"
     ]
   }
 }
