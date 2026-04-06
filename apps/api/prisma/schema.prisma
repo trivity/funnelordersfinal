@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+}
+
+enum PlanTier {
+  FREE
+  STARTER
+  GROWTH
+  AGENCY
+}
+
+enum OrderSource {
+  CLICKFUNNELS
+  GHL
+  KARTRA
+  MANUAL
+}
+
+enum OrderStatus {
+  RECEIVED
+  PROCESSING
+  ROUTED
+  PARTIALLY_ROUTED
+  FAILED
+  ARCHIVED
+}
+
+enum OrderDestination {
+  WOOCOMMERCE
+  SHOPIFY
+}
+
+enum RoutingStatus {
+  PENDING
+  IN_PROGRESS
+  SUCCESS
+  FAILED
+  RETRYING
+}
+
+enum IntegrationPlatform {
+  CLICKFUNNELS
+  GHL
+  KARTRA
+  WOOCOMMERCE
+  SHOPIFY
+}
+
+enum IntegrationDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum IntegrationStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model User {
+  id                   String             @id @default(uuid())
+  email                String             @unique
+  passwordHash         String
+  firstName            String
+  lastName             String
+  role                 Role               @default(USER)
+  status               UserStatus         @default(ACTIVE)
+  stripeCustomerId     String?            @unique
+  subscriptionId       String?            @unique
+  subscriptionStatus   SubscriptionStatus @default(INACTIVE)
+  planTier             PlanTier           @default(FREE)
+  planCurrentPeriodEnd DateTime?
+  maxStores            Int                @default(1)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  lastLoginAt          DateTime?
+
+  stores           Store[]
+  integrations     Integration[]
+  orders           Order[]
+  routingRules     RoutingRule[]
+  refreshTokens    RefreshToken[]
+  auditLogs        AuditLog[]
+  webhookEndpoints WebhookEndpoint[]
+}
+
+model Store {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  integrations     Integration[]
+  orders           Order[]
+  routingRules     RoutingRule[]
+  webhookEndpoints WebhookEndpoint[]
+
+  @@index([userId])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  userAgent String?
+  ipAddress String?
+}
+
+model Order {
+  id                String      @id @default(uuid())
+  userId            String
+  user              User        @relation(fields: [userId], references: [id])
+  storeId           String?
+  store             Store?      @relation(fields: [storeId], references: [id])
+  externalId        String?
+  source            OrderSource
+  status            OrderStatus @default(RECEIVED)
+  customerEmail     String
+  customerFirstName String
+  customerLastName  String
+  customerPhone     String?
+  shippingAddress   Json?
+  billingAddress    Json?
+  subtotal          Decimal     @db.Decimal(10, 2)
+  tax               Decimal?    @db.Decimal(10, 2)
+  shipping          Decimal?    @db.Decimal(10, 2)
+  total             Decimal     @db.Decimal(10, 2)
+  currency          String      @default("USD")
+  lineItems         Json
+  rawPayload        Json?
+  notes             String?
+  tags              String[]    @default([])
+  metadata          Json?
+  receivedAt        DateTime    @default(now())
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  routingLogs OrderRoutingLog[]
+
+  @@index([userId, status])
+  @@index([userId, source])
+  @@index([storeId, status])
+  @@index([storeId, source])
+  @@index([customerEmail])
+  @@index([receivedAt])
+}
+
+model OrderRoutingLog {
+  id              String           @id @default(uuid())
+  orderId         String
+  order           Order            @relation(fields: [orderId], references: [id])
+  destination     OrderDestination
+  status          RoutingStatus
+  externalOrderId String?
+  requestPayload  Json?
+  responsePayload Json?
+  errorMessage    String?
+  attemptCount    Int              @default(1)
+  lastAttemptAt   DateTime         @default(now())
+  succeededAt     DateTime?
+  createdAt       DateTime         @default(now())
+
+  @@index([orderId])
+}
+
+model Integration {
+  id            String               @id @default(uuid())
+  userId        String
+  user          User                 @relation(fields: [userId], references: [id])
+  storeId       String?
+  store         Store?               @relation(fields: [storeId], references: [id])
+  platform      IntegrationPlatform
+  direction     IntegrationDirection
+  label         String?
+  status        IntegrationStatus    @default(DISCONNECTED)
+  credentials   Json
+  fieldMappings Json                 @default("{}")
+  webhookSecret String?
+  webhookUrl    String?
+  lastTestedAt  DateTime?
+  lastUsedAt    DateTime?
+  errorMessage  String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  webhookEndpoints WebhookEndpoint[]
+
+  @@unique([userId, platform])
+}
+
+model WebhookEndpoint {
+  id             String      @id @default(uuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id])
+  storeId        String?
+  store          Store?      @relation(fields: [storeId], references: [id])
+  integrationId  String
+  integration    Integration @relation(fields: [integrationId], references: [id])
+  path           String      @unique
+  secret         String
+  active         Boolean     @default(true)
+  receivedCount  Int         @default(0)
+  lastReceivedAt DateTime?
+  createdAt      DateTime    @default(now())
+}
+
+model RoutingRule {
+  id            String           @id @default(uuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id])
+  storeId       String?
+  store         Store?           @relation(fields: [storeId], references: [id])
+  name          String
+  active        Boolean          @default(true)
+  priority      Int              @default(0)
+  sourceFilter  OrderSource?
+  conditions    Json             @default("[]")
+  destination   OrderDestination
+  destinations  String[]         @default([])
+  matchCount    Int              @default(0)
+  lastMatchedAt DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([userId, active])
+  @@index([storeId, active])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  entityType String?
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model AppConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String   // encrypted
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
