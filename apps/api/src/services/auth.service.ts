@@ -28,19 +28,27 @@ export async function register(
   const passwordHash = await bcrypt.hash(password, 12);
   const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-  const user = await prisma.user.create({
-    data: {
-      email,
-      passwordHash,
-      firstName,
-      lastName,
-      subscriptionStatus: 'TRIALING',
-      trialEndsAt,
-    },
-  });
-
-  // Auto-create a default store for the new user
-  await prisma.store.create({ data: { userId: user.id, name: 'My Store' } });
+  // Create user + default store atomically
+  let user: Awaited<ReturnType<typeof prisma.user.create>>;
+  try {
+    user = await prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          email,
+          passwordHash,
+          firstName,
+          lastName,
+          subscriptionStatus: 'TRIALING' as never,
+          trialEndsAt,
+        },
+      });
+      await tx.store.create({ data: { userId: newUser.id, name: 'My Store' } });
+      return newUser;
+    });
+  } catch (err) {
+    logger.error('Failed to create user during registration', { error: (err as Error).message });
+    throw new AppError('INTERNAL_ERROR', 'Registration failed. Please try again.', 500);
+  }
 
   const accessToken = signAccessToken(user.id, user.email, user.role);
   const refreshToken = await createRefreshToken(user.id, undefined, undefined);
