@@ -101,7 +101,8 @@
       "Bash(find /c/Users/trivi/OneDrive/Desktop/AI WEBSITES/FunnelOrders/packages -name *.ts)",
       "Bash(cd /c/Users/trivi/OneDrive/Desktop/AI WEBSITES/FunnelOrders/apps/api)",
       "Bash(cd /c/Users/trivi/OneDrive/Desktop/AI WEBSITES/FunnelOrders/apps/web)",
-      "Bash(curl -s http://localhost:3000)"
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(npm install:*)"
     ]
   }
 }
