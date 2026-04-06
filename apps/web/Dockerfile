@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package.json ./
 
 # Install dependencies (no workspace, no lockfile needed)
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Copy the rest of the web app
 COPY . .
