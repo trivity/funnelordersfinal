@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import {
+  Home,
   ShoppingBag,
   Plug,
   GitBranch,
@@ -28,6 +29,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 const navItems = [
+  { label: 'Home', href: '/', icon: Home },
   { label: 'Orders', href: '/orders', icon: ShoppingBag },
   { label: 'Archives', href: '/orders/archives', icon: Archive, sub: true },
   { label: 'Integrations', href: '/settings/integrations', icon: Plug },
@@ -201,7 +203,7 @@ export function Sidebar() {
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = item.sub
+            const isActive = item.sub || item.href === '/'
               ? pathname === item.href
               : pathname === item.href || (pathname.startsWith(item.href + '/') && item.href !== '/orders');
             return (

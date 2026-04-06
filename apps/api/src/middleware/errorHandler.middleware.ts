@@ -11,7 +11,11 @@ export function errorHandler(
   if (err instanceof AppError) {
     res.status(err.statusCode).json({
       success: false,
-      error: { code: err.code, message: err.message, details: err.details },
+      error: {
+        code: err.code,
+        message: err.message,
+        ...(process.env.NODE_ENV !== 'production' && err.details !== undefined && { details: err.details }),
+      },
     });
     return;
   }

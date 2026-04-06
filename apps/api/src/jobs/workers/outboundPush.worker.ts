@@ -4,6 +4,7 @@ import { logger } from '../../lib/logger';
 import { prisma } from '../../lib/prisma';
 import { pushToWooCommerce } from '../../services/outbound/woocommerce.pusher';
 import { pushToShopify } from '../../services/outbound/shopify.pusher';
+import { notifyRoutingFailure } from '../../services/notifications.service';
 import type { OutboundPushJob } from '../queues';
 
 export function startOutboundPushWorker() {
@@ -79,6 +80,16 @@ export function startOutboundPushWorker() {
       destination: job?.data.destination,
       error: err.message,
     });
+
+    // Send alert only on the final attempt (no more retries left)
+    if (job && job.attemptsMade >= (job.opts.attempts ?? 5)) {
+      void notifyRoutingFailure(
+        job.data.userId,
+        job.data.orderId,
+        job.data.destination,
+        err.message,
+      );
+    }
   });
 
   return worker;

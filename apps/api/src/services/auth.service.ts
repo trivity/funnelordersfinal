@@ -107,7 +107,22 @@ async function createRefreshToken(userId: string, ipAddress?: string, userAgent?
   return token;
 }
 
-export function sanitizeUser(user: { id: string; email: string; firstName: string; lastName: string; role: string; status: string; planTier: string; subscriptionStatus: string; createdAt: Date; lastLoginAt: Date | null }) {
+export function sanitizeUser(user: {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  status: string;
+  planTier: string;
+  subscriptionStatus: string;
+  createdAt: Date;
+  lastLoginAt: Date | null;
+  onboardingCompleted?: boolean;
+  notifyOnFailure?: boolean;
+  alertEmail?: string | null;
+  slackWebhookUrl?: string | null;
+}) {
   return {
     id: user.id,
     email: user.email,
@@ -119,5 +134,9 @@ export function sanitizeUser(user: { id: string; email: string; firstName: strin
     subscriptionStatus: user.subscriptionStatus,
     createdAt: user.createdAt,
     lastLoginAt: user.lastLoginAt,
+    onboardingCompleted: user.onboardingCompleted ?? false,
+    notifyOnFailure: user.notifyOnFailure ?? true,
+    alertEmail: user.alertEmail ?? null,
+    slackWebhookUrl: user.slackWebhookUrl ?? null,
   };
 }

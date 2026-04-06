@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import { authenticate } from '../middleware/auth.middleware';
 import { prisma } from '../lib/prisma';
-import { validate, updateProfileSchema, changePasswordSchema } from '../utils/validation';
+import { validate, updateProfileSchema, changePasswordSchema, updateNotificationsSchema } from '../utils/validation';
 import { success } from '../utils/response';
 import { AppError } from '../utils/AppError';
 import { sanitizeUser } from '../services/auth.service';
@@ -68,6 +68,32 @@ router.delete('/account', async (req: Request, res: Response, next: NextFunction
     });
     await createAuditLog({ userId: req.user!.id, action: 'ACCOUNT_DELETION_REQUESTED' });
     success(res, { message: 'Account deletion requested. Your data will be removed within 30 days.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/notifications', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const body = validate(updateNotificationsSchema, req.body);
+    const user = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: body,
+    });
+    success(res, sanitizeUser(user));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/onboarding', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { completed } = req.body as { completed?: boolean };
+    const user = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { onboardingCompleted: completed === true },
+    });
+    success(res, sanitizeUser(user));
   } catch (err) {
     next(err);
   }

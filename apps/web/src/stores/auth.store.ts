@@ -10,6 +10,10 @@ interface User {
   role: string;
   planTier: string;
   subscriptionStatus: string;
+  onboardingCompleted: boolean;
+  notifyOnFailure: boolean;
+  alertEmail: string | null;
+  slackWebhookUrl: string | null;
 }
 
 interface AuthState {

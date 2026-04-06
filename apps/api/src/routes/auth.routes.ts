@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import * as authService from '../services/auth.service';
 import { validate, registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from '../utils/validation';
 import { authenticate } from '../middleware/auth.middleware';
+import { authLimiter } from '../middleware/rateLimit.middleware';
 import { success } from '../utils/response';
 import { AppError } from '../utils/AppError';
 import { prisma } from '../lib/prisma';
@@ -21,7 +22,7 @@ const COOKIE_OPTS = {
   path: '/',
 };
 
-router.post('/register', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/register', authLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = validate(registerSchema, req.body);
     const result = await authService.register(body.email, body.password, body.firstName, body.lastName);
@@ -32,7 +33,7 @@ router.post('/register', async (req: Request, res: Response, next: NextFunction)
   }
 });
 
-router.post('/login', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/login', authLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = validate(loginSchema, req.body);
     const result = await authService.login(
@@ -71,7 +72,7 @@ router.post('/logout', async (req: Request, res: Response, next: NextFunction) =
   }
 });
 
-router.post('/forgot-password', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/forgot-password', authLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = validate(forgotPasswordSchema, req.body);
     const user = await prisma.user.findUnique({ where: { email: body.email } });
@@ -89,7 +90,7 @@ router.post('/forgot-password', async (req: Request, res: Response, next: NextFu
   }
 });
 
-router.post('/reset-password', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/reset-password', authLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = validate(resetPasswordSchema, req.body);
     const record = await prisma.passwordResetToken.findUnique({ where: { token: body.token } });

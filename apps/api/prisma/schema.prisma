@@ -103,6 +103,10 @@ model User {
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
   lastLoginAt          DateTime?
+  onboardingCompleted  Boolean            @default(false)
+  notifyOnFailure      Boolean            @default(true)
+  alertEmail           String?
+  slackWebhookUrl      String?
 
   stores           Store[]
   integrations     Integration[]

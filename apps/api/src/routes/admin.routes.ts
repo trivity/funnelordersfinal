@@ -82,6 +82,14 @@ router.get('/users/:id', async (req: Request, res: Response, next: NextFunction)
 router.patch('/users/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { role, status } = req.body as { role?: string; status?: string };
+    const VALID_ROLES = ['ADMIN', 'USER'];
+    const VALID_STATUSES = ['ACTIVE', 'SUSPENDED', 'DELETED'];
+    if (role && !VALID_ROLES.includes(role)) {
+      throw new AppError('VALIDATION_ERROR', `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}`, 400);
+    }
+    if (status && !VALID_STATUSES.includes(status)) {
+      throw new AppError('VALIDATION_ERROR', `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`, 400);
+    }
     const user = await prisma.user.update({
       where: { id: req.params['id'] as string },
       data: {
@@ -193,10 +201,14 @@ router.get('/config', async (_req, res, next) => {
 router.patch('/config', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const updates = req.body as Record<string, string>;
-    if (!updates || typeof updates !== 'object') {
+    if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
       throw new AppError('VALIDATION_ERROR', 'Request body must be an object of key/value pairs', 400);
     }
+    const ALLOWED_KEYS = new Set(Object.values(appConfigService.CONFIG_KEYS));
     for (const [key, value] of Object.entries(updates)) {
+      if (!ALLOWED_KEYS.has(key as never)) {
+        throw new AppError('VALIDATION_ERROR', `Unknown config key: ${key}`, 400);
+      }
       if (typeof value !== 'string') continue;
       await appConfigService.setConfig(key, value);
     }

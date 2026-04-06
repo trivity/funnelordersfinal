@@ -1,8 +1,16 @@
 import { z } from 'zod';
 
+const strongPassword = z
+  .string()
+  .min(8, 'Password must be at least 8 characters')
+  .max(128, 'Password must be 128 characters or fewer')
+  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+  .regex(/[0-9]/, 'Password must contain at least one number');
+
 export const registerSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8).max(128),
+  password: strongPassword,
   firstName: z.string().min(1).max(100),
   lastName: z.string().min(1).max(100),
 });
@@ -18,7 +26,7 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   token: z.string(),
-  password: z.string().min(8).max(128),
+  password: strongPassword,
 });
 
 export const createOrderSchema = z.object({
@@ -105,13 +113,19 @@ export const reorderRulesSchema = z.object({
 
 export const changePasswordSchema = z.object({
   currentPassword: z.string(),
-  newPassword: z.string().min(8).max(128),
+  newPassword: strongPassword,
 });
 
 export const updateProfileSchema = z.object({
   firstName: z.string().min(1).max(100).optional(),
   lastName: z.string().min(1).max(100).optional(),
   email: z.string().email().optional(),
+});
+
+export const updateNotificationsSchema = z.object({
+  notifyOnFailure: z.boolean().optional(),
+  alertEmail: z.string().email().nullable().optional(),
+  slackWebhookUrl: z.string().url().nullable().optional(),
 });
 
 export function validate<T>(schema: z.ZodSchema<T>, data: unknown): T {

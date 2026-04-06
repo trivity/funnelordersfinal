@@ -10,3 +10,4 @@ prisma/migrations
 tunnel.log
 tunnel.err
 cloudflared.exe
+.claude/
