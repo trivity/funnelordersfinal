@@ -22,7 +22,9 @@ COPY apps/web ./apps/web
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# Build Next.js
+# Build Next.js (NEXT_PUBLIC_ vars must be available at build time)
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN cd apps/web && pnpm run build
 
 WORKDIR /app/apps/web
