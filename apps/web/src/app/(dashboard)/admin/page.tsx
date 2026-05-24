@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, ShoppingBag, Activity, Shield, Trash2, UserX, UserCheck, Key, RefreshCw, DollarSign, Mail } from 'lucide-react';
+import { Users, ShoppingBag, Activity, Shield, Trash2, UserX, UserCheck, Key, RefreshCw, DollarSign, Mail, CheckCircle2, Pencil } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
@@ -243,7 +243,33 @@ interface ConfigData {
   RESEND_API_KEY?: string;
 }
 
-function EmailConfigPanel({ config, saveMutation }: { config: ConfigData | undefined; saveMutation: ReturnType<typeof useMutation<void, Error, Record<string, string>>> }) {
+function ConnectedKeyBadge({ label, maskedValue, onEdit }: { label: string; maskedValue: string; onEdit: () => void }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50/60 px-4 py-3">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-emerald-800 flex items-center gap-1.5">
+            {label}
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-emerald-200 text-emerald-800">Connected</span>
+          </p>
+          <p className="text-xs text-emerald-600/80 font-mono mt-0.5">{maskedValue}</p>
+        </div>
+      </div>
+      <button
+        onClick={onEdit}
+        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-900 hover:bg-emerald-100 rounded-md transition-colors"
+      >
+        <Pencil className="w-3.5 h-3.5" />
+        Update Key
+      </button>
+    </div>
+  );
+}
+
+function EmailConfigPanel({ config, saveMutation, editingResendKey, setEditingResendKey }: { config: ConfigData | undefined; saveMutation: ReturnType<typeof useMutation<void, Error, Record<string, string>>>; editingResendKey: boolean; setEditingResendKey: (v: boolean) => void }) {
   const [resendKey, setResendKey] = useState('');
 
   const handleSave = () => {
@@ -251,6 +277,8 @@ function EmailConfigPanel({ config, saveMutation }: { config: ConfigData | undef
     saveMutation.mutate({ RESEND_API_KEY: resendKey });
     setResendKey('');
   };
+
+  const hasResendKey = !!config?.RESEND_API_KEY;
 
   return (
     <div className="border border-border rounded-lg p-6 bg-white">
@@ -261,29 +289,44 @@ function EmailConfigPanel({ config, saveMutation }: { config: ConfigData | undef
       <p className="text-sm text-muted-foreground mb-4">
         Override the Resend API key used for sending password reset emails. Takes effect immediately.
       </p>
-      <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1">
-          Resend API Key
-        </label>
-        {config?.RESEND_API_KEY && (
-          <p className="text-xs text-muted-foreground mb-1 font-mono">Current: {config.RESEND_API_KEY.slice(0, 8)}••••••••</p>
-        )}
-        <input
-          type="password"
-          value={resendKey}
-          onChange={(e) => setResendKey(e.target.value)}
-          placeholder="re_..."
-          className="w-full border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+      {hasResendKey && !editingResendKey ? (
+        <ConnectedKeyBadge
+          label="Resend API Key"
+          maskedValue={config.RESEND_API_KEY!}
+          onEdit={() => setEditingResendKey(true)}
         />
-      </div>
-      <button
-        onClick={handleSave}
-        disabled={saveMutation.isPending}
-        className="mt-4 flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium disabled:opacity-50"
-      >
-        <Key className="w-4 h-4" />
-        {saveMutation.isPending ? 'Saving...' : 'Save Key'}
-      </button>
+      ) : (
+        <div>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1">
+            Resend API Key
+          </label>
+          <input
+            type="password"
+            value={resendKey}
+            onChange={(e) => setResendKey(e.target.value)}
+            placeholder="re_..."
+            className="w-full border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+          />
+          <div className="flex items-center gap-2 mt-4">
+            <button
+              onClick={handleSave}
+              disabled={saveMutation.isPending}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium disabled:opacity-50"
+            >
+              <Key className="w-4 h-4" />
+              {saveMutation.isPending ? 'Saving...' : 'Save Key'}
+            </button>
+            {hasResendKey && (
+              <button
+                onClick={() => { setEditingResendKey(false); setResendKey(''); }}
+                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -293,6 +336,8 @@ function StripeConfigPanel() {
   const [fields, setFields] = useState<ConfigData>({});
   const [prices, setPrices] = useState({ STARTER: '29.99', GROWTH: '49.99', AGENCY: '97.99' });
   const [syncing, setSyncing] = useState(false);
+  const [editingStripeKeys, setEditingStripeKeys] = useState(false);
+  const [editingResendKey, setEditingResendKey] = useState(false);
 
   const { data: config } = useQuery<ConfigData>({
     queryKey: ['admin-config'],
@@ -304,10 +349,13 @@ function StripeConfigPanel() {
 
   const saveMutation = useMutation({
     mutationFn: async (updates: Record<string, string>) => {
-      await api.patch('/admin/config', { updates });
+      await api.patch('/admin/config', updates);
     },
     onSuccess: () => {
       toast.success('Configuration saved');
+      setFields({});
+      setEditingStripeKeys(false);
+      setEditingResendKey(false);
       void qc.invalidateQueries({ queryKey: ['admin-config'] });
     },
     onError: () => toast.error('Failed to save configuration'),
@@ -352,50 +400,77 @@ function StripeConfigPanel() {
         <p className="text-sm text-muted-foreground mb-4">
           Override the Stripe keys from the environment. Changes take effect immediately without a server restart.
         </p>
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1">
-              Secret Key (sk_live_... or sk_test_...)
-            </label>
-            {config?.STRIPE_SECRET_KEY && (
-              <p className="text-xs text-muted-foreground mb-1 font-mono">Current: {config.STRIPE_SECRET_KEY}</p>
-            )}
-            <input
-              type="password"
-              value={fields.STRIPE_SECRET_KEY ?? ''}
-              onChange={(e) => setFields((f) => ({ ...f, STRIPE_SECRET_KEY: e.target.value }))}
-              placeholder="sk_live_..."
-              className="w-full border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+        {config?.STRIPE_SECRET_KEY && config?.STRIPE_WEBHOOK_SECRET && !editingStripeKeys ? (
+          <div className="space-y-3">
+            <ConnectedKeyBadge
+              label="Secret Key"
+              maskedValue={config.STRIPE_SECRET_KEY}
+              onEdit={() => setEditingStripeKeys(true)}
+            />
+            <ConnectedKeyBadge
+              label="Webhook Secret"
+              maskedValue={config.STRIPE_WEBHOOK_SECRET}
+              onEdit={() => setEditingStripeKeys(true)}
             />
           </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1">
-              Webhook Secret (whsec_...)
-            </label>
-            {config?.STRIPE_WEBHOOK_SECRET && (
-              <p className="text-xs text-muted-foreground mb-1 font-mono">Current: {config.STRIPE_WEBHOOK_SECRET}</p>
-            )}
-            <input
-              type="password"
-              value={fields.STRIPE_WEBHOOK_SECRET ?? ''}
-              onChange={(e) => setFields((f) => ({ ...f, STRIPE_WEBHOOK_SECRET: e.target.value }))}
-              placeholder="whsec_..."
-              className="w-full border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring font-mono"
-            />
-          </div>
-        </div>
-        <button
-          onClick={handleSaveKeys}
-          disabled={saveMutation.isPending}
-          className="mt-4 flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium disabled:opacity-50"
-        >
-          <Key className="w-4 h-4" />
-          {saveMutation.isPending ? 'Saving...' : 'Save Keys'}
-        </button>
+        ) : (
+          <>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1">
+                  Secret Key (sk_live_... or sk_test_...)
+                </label>
+                {config?.STRIPE_SECRET_KEY && (
+                  <p className="text-xs text-muted-foreground mb-1 font-mono">Current: {config.STRIPE_SECRET_KEY}</p>
+                )}
+                <input
+                  type="password"
+                  value={fields.STRIPE_SECRET_KEY ?? ''}
+                  onChange={(e) => setFields((f) => ({ ...f, STRIPE_SECRET_KEY: e.target.value }))}
+                  placeholder="sk_live_..."
+                  className="w-full border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1">
+                  Webhook Secret (whsec_...)
+                </label>
+                {config?.STRIPE_WEBHOOK_SECRET && (
+                  <p className="text-xs text-muted-foreground mb-1 font-mono">Current: {config.STRIPE_WEBHOOK_SECRET}</p>
+                )}
+                <input
+                  type="password"
+                  value={fields.STRIPE_WEBHOOK_SECRET ?? ''}
+                  onChange={(e) => setFields((f) => ({ ...f, STRIPE_WEBHOOK_SECRET: e.target.value }))}
+                  placeholder="whsec_..."
+                  className="w-full border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2 mt-4">
+              <button
+                onClick={handleSaveKeys}
+                disabled={saveMutation.isPending}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium disabled:opacity-50"
+              >
+                <Key className="w-4 h-4" />
+                {saveMutation.isPending ? 'Saving...' : 'Save Keys'}
+              </button>
+              {config?.STRIPE_SECRET_KEY && config?.STRIPE_WEBHOOK_SECRET && (
+                <button
+                  onClick={() => { setEditingStripeKeys(false); setFields({}); }}
+                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Email Config */}
-      <EmailConfigPanel config={config} saveMutation={saveMutation} />
+      <EmailConfigPanel config={config} saveMutation={saveMutation} editingResendKey={editingResendKey} setEditingResendKey={setEditingResendKey} />
 
       {/* Package Pricing */}
       <div className="border border-border rounded-lg p-6 bg-white">
