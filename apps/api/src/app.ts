@@ -15,6 +15,7 @@ import billingRoutes from './routes/billing.routes';
 import userRoutes from './routes/user.routes';
 import adminRoutes from './routes/admin.routes';
 import storesRoutes from './routes/stores.routes';
+import analyticsRoutes from './routes/analytics.routes';
 
 export function createApp() {
   const app = express();
@@ -71,6 +72,7 @@ export function createApp() {
   app.use('/api/v1/user', userRoutes);
   app.use('/api/v1/admin', adminRoutes);
   app.use('/api/v1/stores', storesRoutes);
+  app.use('/api/v1/analytics', analyticsRoutes);
 
   // Health check
   app.get('/health', (_req, res) => {

@@ -22,13 +22,14 @@ import {
   Pencil,
   Trash2,
   X,
+  BarChart3,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { useStoreStore } from '@/stores/store.store';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-const navItems = [
+const baseNavItems = [
   { label: 'Home', href: '/dashboard', icon: Home },
   { label: 'Orders', href: '/orders', icon: ShoppingBag },
   { label: 'Archives', href: '/orders/archives', icon: Archive, sub: true },
@@ -37,6 +38,16 @@ const navItems = [
   { label: 'Billing', href: '/settings/billing', icon: CreditCard },
   { label: 'Profile', href: '/settings/profile', icon: User },
 ];
+
+function getSalesNavItems(storeCount: number) {
+  if (storeCount > 1) {
+    return [
+      { label: 'All Stores Sales', href: '/sales', icon: BarChart3 },
+      { label: 'Store Sales', href: '/sales/store', icon: BarChart3, sub: true },
+    ];
+  }
+  return [{ label: 'Sales', href: '/sales/store', icon: BarChart3 }];
+}
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -53,6 +64,11 @@ export function Sidebar() {
   const [editName, setEditName] = useState('');
 
   const activeStore = stores.find((s) => s.id === activeStoreId) ?? stores[0];
+  const navItems = [
+    ...baseNavItems.slice(0, 3),
+    ...getSalesNavItems(stores.length),
+    ...baseNavItems.slice(3),
+  ];
 
   const handleLogout = async () => {
     await logout();
@@ -77,6 +93,7 @@ export function Sidebar() {
       setNewStoreModal(false);
       setNewStoreName('');
       toast.success(`"${store.name}" created`);
+      router.push('/dashboard');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ?? 'Failed to create store';
       toast.error(msg);
@@ -205,7 +222,7 @@ export function Sidebar() {
           {navItems.map((item) => {
             const isActive = item.sub || item.href === '/'
               ? pathname === item.href
-              : pathname === item.href || (pathname.startsWith(item.href + '/') && item.href !== '/orders');
+              : pathname === item.href || (pathname.startsWith(item.href + '/') && item.href !== '/orders' && item.href !== '/sales');
             return (
               <Link key={item.href} href={item.href} className={item.sub ? 'pl-4 block' : 'block'}>
                 <motion.div
