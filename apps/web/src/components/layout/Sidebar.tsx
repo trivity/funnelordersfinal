@@ -39,14 +39,14 @@ const baseNavItems = [
   { label: 'Profile', href: '/settings/profile', icon: User },
 ];
 
-function getSalesNavItems(storeCount: number) {
+function getAnalyticsNavItems(storeCount: number) {
   if (storeCount > 1) {
     return [
-      { label: 'All Stores Sales', href: '/sales', icon: BarChart3 },
-      { label: 'Store Sales', href: '/sales/store', icon: BarChart3, sub: true },
+      { label: 'Analytics', href: '/analytics', icon: BarChart3 },
+      { label: 'Store Analytics', href: '/analytics/store', icon: BarChart3, sub: true },
     ];
   }
-  return [{ label: 'Sales', href: '/sales/store', icon: BarChart3 }];
+  return [{ label: 'Analytics', href: '/analytics/store', icon: BarChart3 }];
 }
 
 export function Sidebar() {
@@ -66,7 +66,7 @@ export function Sidebar() {
   const activeStore = stores.find((s) => s.id === activeStoreId) ?? stores[0];
   const navItems = [
     ...baseNavItems.slice(0, 3),
-    ...getSalesNavItems(stores.length),
+    ...getAnalyticsNavItems(stores.length),
     ...baseNavItems.slice(3),
   ];
 
@@ -222,7 +222,7 @@ export function Sidebar() {
           {navItems.map((item) => {
             const isActive = item.sub || item.href === '/'
               ? pathname === item.href
-              : pathname === item.href || (pathname.startsWith(item.href + '/') && item.href !== '/orders' && item.href !== '/sales');
+              : pathname === item.href || (pathname.startsWith(item.href + '/') && item.href !== '/orders' && item.href !== '/analytics');
             return (
               <Link key={item.href} href={item.href} className={item.sub ? 'pl-4 block' : 'block'}>
                 <motion.div

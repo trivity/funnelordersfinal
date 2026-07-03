@@ -10,30 +10,39 @@ router.use(authenticate);
 
 router.get('/sales', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const storeId = req.query['storeId'] as string | undefined;
-    const source = req.query['source'] as string | undefined;
-    const product = req.query['product'] as string | undefined;
-    const startDate = req.query['startDate'] as string | undefined;
-    const endDate = req.query['endDate'] as string | undefined;
-
-    if (storeId) {
-      const store = await prisma.store.findFirst({
-        where: { id: storeId, userId: req.user!.id },
-      });
-      if (!store) throw new AppError('NOT_FOUND', 'Store not found', 404);
-    }
-
-    const data = await analyticsService.getSalesAnalytics(req.user!.id, {
-      storeId,
-      source,
-      product,
-      startDate,
-      endDate,
-    });
+    const filters = await parseFilters(req);
+    const data = await analyticsService.getSalesAnalytics(req.user!.id, filters);
     success(res, data);
   } catch (err) {
     next(err);
   }
 });
+
+router.get('/overview', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const filters = await parseFilters(req);
+    const data = await analyticsService.getAnalyticsOverview(req.user!.id, filters);
+    success(res, data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+async function parseFilters(req: Request) {
+  const storeId = req.query['storeId'] as string | undefined;
+  const source = req.query['source'] as string | undefined;
+  const product = req.query['product'] as string | undefined;
+  const startDate = req.query['startDate'] as string | undefined;
+  const endDate = req.query['endDate'] as string | undefined;
+
+  if (storeId) {
+    const store = await prisma.store.findFirst({
+      where: { id: storeId, userId: req.user!.id },
+    });
+    if (!store) throw new AppError('NOT_FOUND', 'Store not found', 404);
+  }
+
+  return { storeId, source, product, startDate, endDate };
+}
 
 export default router;
