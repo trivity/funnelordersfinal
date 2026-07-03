@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, ShoppingBag, Activity, Shield, Trash2, UserX, UserCheck, Key, RefreshCw, DollarSign, Mail, CheckCircle2, Pencil } from 'lucide-react';
+import { Users, ShoppingBag, Activity, Shield, Trash2, UserX, UserCheck, Key, RefreshCw, DollarSign, Mail, CheckCircle2, Pencil, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
@@ -40,11 +40,27 @@ function StatCard({ icon: Icon, label, value, color }: { icon: React.ElementType
   );
 }
 
+function AdminSearchBar({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder: string }) {
+  return (
+    <div className="relative max-w-sm">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full border border-input rounded-md pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+      />
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const { user } = useAuthStore();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<'users' | 'logs' | 'stripe'>('users');
+  const [userSearch, setUserSearch] = useState('');
+  const [logSearch, setLogSearch] = useState('');
 
   useEffect(() => {
     if (user && user.role !== 'ADMIN') router.replace('/orders');
@@ -59,18 +75,22 @@ export default function AdminPage() {
   });
 
   const { data: users, isLoading: usersLoading } = useQuery<AdminUser[]>({
-    queryKey: ['admin-users'],
+    queryKey: ['admin-users', userSearch],
     queryFn: async () => {
-      const res = await api.get('/admin/users?limit=50');
+      const params = new URLSearchParams({ limit: '50' });
+      if (userSearch) params.set('search', userSearch);
+      const res = await api.get(`/admin/users?${params.toString()}`);
       return res.data.data;
     },
     enabled: tab === 'users',
   });
 
-  const { data: logs } = useQuery<{ id: string; action: string; entityType: string; createdAt: string; user?: { email: string } }[]>({
-    queryKey: ['admin-logs'],
+  const { data: logs, isLoading: logsLoading } = useQuery<{ id: string; action: string; entityType: string; createdAt: string; user?: { email: string } }[]>({
+    queryKey: ['admin-logs', logSearch],
     queryFn: async () => {
-      const res = await api.get('/admin/audit-logs?limit=50');
+      const params = new URLSearchParams({ limit: '50' });
+      if (logSearch) params.set('search', logSearch);
+      const res = await api.get(`/admin/audit-logs?${params.toString()}`);
       return res.data.data;
     },
     enabled: tab === 'logs',
@@ -131,7 +151,13 @@ export default function AdminPage() {
 
       {/* Users Table */}
       {tab === 'users' && (
-        <div className="rounded-lg border overflow-hidden">
+        <div className="space-y-4">
+          <AdminSearchBar
+            value={userSearch}
+            onChange={setUserSearch}
+            placeholder="Search by name or email..."
+          />
+          <div className="rounded-lg border overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
@@ -146,6 +172,9 @@ export default function AdminPage() {
             <tbody className="divide-y">
               {usersLoading && (
                 <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</td></tr>
+              )}
+              {!usersLoading && users?.length === 0 && (
+                <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">No users found</td></tr>
               )}
               {users?.map((u) => (
                 <tr key={u.id} className="hover:bg-muted/30 transition-colors">
@@ -195,6 +224,7 @@ export default function AdminPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -203,7 +233,13 @@ export default function AdminPage() {
 
       {/* Audit Logs */}
       {tab === 'logs' && (
-        <div className="rounded-lg border overflow-hidden">
+        <div className="space-y-4">
+          <AdminSearchBar
+            value={logSearch}
+            onChange={setLogSearch}
+            placeholder="Search by action, entity, or user email..."
+          />
+          <div className="rounded-lg border overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
@@ -214,6 +250,12 @@ export default function AdminPage() {
               </tr>
             </thead>
             <tbody className="divide-y">
+              {logsLoading && (
+                <tr><td colSpan={4} className="text-center py-8 text-muted-foreground">Loading...</td></tr>
+              )}
+              {!logsLoading && logs?.length === 0 && (
+                <tr><td colSpan={4} className="text-center py-8 text-muted-foreground">No audit logs found</td></tr>
+              )}
               {logs?.map((log) => (
                 <tr key={log.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 font-mono text-xs">{log.action}</td>
@@ -226,6 +268,7 @@ export default function AdminPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

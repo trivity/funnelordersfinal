@@ -144,10 +144,18 @@ router.get('/audit-logs', async (req: Request, res: Response, next: NextFunction
     const { page, limit, skip } = parsePagination(req);
     const userId = req.query['userId'] as string | undefined;
     const action = req.query['action'] as string | undefined;
+    const search = req.query['search'] as string | undefined;
 
     const where = {
       ...(userId && { userId }),
-      ...(action && { action: { contains: action } }),
+      ...(action && { action: { contains: action, mode: 'insensitive' as const } }),
+      ...(search && {
+        OR: [
+          { action: { contains: search, mode: 'insensitive' as const } },
+          { entityType: { contains: search, mode: 'insensitive' as const } },
+          { user: { email: { contains: search, mode: 'insensitive' as const } } },
+        ],
+      }),
     };
 
     const [logs, total] = await Promise.all([
