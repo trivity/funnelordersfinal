@@ -7,7 +7,7 @@ import { createAuditLog } from '../middleware/auditLog.middleware';
 import { AppError } from '../utils/AppError';
 import { sanitizeUser } from '../services/auth.service';
 import * as appConfigService from '../services/appConfig.service';
-import { stripe } from '../lib/stripe';
+import { getStripe, resetStripeClient } from '../lib/stripe';
 
 const router = Router();
 router.use(authenticate, requireAdmin);
@@ -220,6 +220,9 @@ router.patch('/config', async (req: Request, res: Response, next: NextFunction) 
       if (typeof value !== 'string') continue;
       await appConfigService.setConfig(key, value);
     }
+    if (updates.STRIPE_SECRET_KEY || updates.STRIPE_WEBHOOK_SECRET) {
+      resetStripeClient();
+    }
     await createAuditLog({
       userId: req.user!.id,
       action: 'APP_CONFIG_UPDATED',
@@ -232,15 +235,45 @@ router.patch('/config', async (req: Request, res: Response, next: NextFunction) 
 });
 
 // POST /admin/stripe/sync-prices — create new Stripe prices for updated amounts
+function parseSyncPriceOverrides(body: unknown): Record<string, number> {
+  if (!body || typeof body !== 'object') return {};
+
+  const payload = body as Record<string, unknown>;
+
+  // Frontend format: { prices: [{ tier: 'STARTER', amount: 29.99 }] } (dollars)
+  if (Array.isArray(payload.prices)) {
+    const overrides: Record<string, number> = {};
+    for (const entry of payload.prices) {
+      if (!entry || typeof entry !== 'object') continue;
+      const { tier, amount } = entry as { tier?: string; amount?: number };
+      if (tier && typeof amount === 'number' && Number.isFinite(amount)) {
+        overrides[tier.toLowerCase()] = Math.round(amount * 100);
+      }
+    }
+    return overrides;
+  }
+
+  // Legacy flat format: { starter: 2999, growth: 4999, agency: 9799 } (cents)
+  const overrides: Record<string, number> = {};
+  for (const key of ['starter', 'growth', 'agency']) {
+    const value = payload[key];
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      overrides[key] = Math.round(value);
+    }
+  }
+  return overrides;
+}
+
 router.post('/stripe/sync-prices', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const stripe = await getStripe();
     const plans = [
       { key: appConfigService.CONFIG_KEYS.STRIPE_PRICE_STARTER, amount: 2999, nickname: 'Starter' },
       { key: appConfigService.CONFIG_KEYS.STRIPE_PRICE_GROWTH, amount: 4999, nickname: 'Growth' },
       { key: appConfigService.CONFIG_KEYS.STRIPE_PRICE_AGENCY, amount: 9799, nickname: 'Agency' },
     ];
 
-    const overrides = req.body as Record<string, number> | undefined;
+    const overrides = parseSyncPriceOverrides(req.body);
     const results: Record<string, string> = {};
 
     for (const plan of plans) {

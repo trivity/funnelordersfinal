@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import Stripe from 'stripe';
 import { AppError } from '../utils/AppError';
 import { logger } from '../lib/logger';
 
@@ -16,6 +17,15 @@ export function errorHandler(
         message: err.message,
         ...(process.env.NODE_ENV !== 'production' && err.details !== undefined && { details: err.details }),
       },
+    });
+    return;
+  }
+
+  if (err instanceof Stripe.errors.StripeError) {
+    logger.error('Stripe error', { type: err.type, message: err.message });
+    res.status(502).json({
+      success: false,
+      error: { code: 'STRIPE_ERROR', message: err.message },
     });
     return;
   }

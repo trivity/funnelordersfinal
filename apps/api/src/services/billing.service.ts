@@ -1,4 +1,4 @@
-import { stripe } from '../lib/stripe';
+import { getStripe } from '../lib/stripe';
 import { prisma } from '../lib/prisma';
 import { config } from '../lib/env';
 import { AppError } from '../utils/AppError';
@@ -61,13 +61,9 @@ async function getPriceId(tier: string): Promise<string> {
       return priceId ?? config.STRIPE_PRICE_STARTER;
     case 'GROWTH':
       priceId = await getConfig(CONFIG_KEYS.STRIPE_PRICE_GROWTH);
-      // Fall back to STRIPE_PRICE_GROWTH env var if set, otherwise error
-      if (!priceId) {
-        const envGrowth = process.env['STRIPE_PRICE_GROWTH'];
-        if (envGrowth) return envGrowth;
-        throw new AppError('INVALID_PLAN', 'No price configured for GROWTH plan. Run /admin/stripe/sync-prices first.', 400);
-      }
-      return priceId;
+      if (priceId) return priceId;
+      if (config.STRIPE_PRICE_GROWTH) return config.STRIPE_PRICE_GROWTH;
+      throw new AppError('INVALID_PLAN', 'No price configured for GROWTH plan. Run Sync to Stripe in Admin settings first.', 400);
     case 'AGENCY':
       priceId = await getConfig(CONFIG_KEYS.STRIPE_PRICE_AGENCY);
       return priceId ?? config.STRIPE_PRICE_AGENCY;
@@ -77,6 +73,7 @@ async function getPriceId(tier: string): Promise<string> {
 }
 
 export async function createCheckoutSession(userId: string, planTier: string): Promise<string> {
+  const stripe = await getStripe();
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new AppError('NOT_FOUND', 'User not found', 404);
 
@@ -116,6 +113,7 @@ export async function createCheckoutSession(userId: string, planTier: string): P
 }
 
 export async function createPortalSession(userId: string): Promise<string> {
+  const stripe = await getStripe();
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user?.stripeCustomerId) throw new AppError('NOT_FOUND', 'No billing account found', 404);
 

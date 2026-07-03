@@ -30,6 +30,11 @@ const PLAN_STORE_LABEL: Record<string, { label: string; icon: React.ReactNode }>
   AGENCY:  { label: 'Unlimited store environments', icon: <Infinity className="w-4 h-4" /> },
 };
 
+function getApiErrorMessage(err: unknown, fallback: string): string {
+  const message = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message;
+  return message ?? fallback;
+}
+
 export default function BillingPage() {
   const searchParams = useSearchParams();
 
@@ -65,7 +70,7 @@ export default function BillingPage() {
       return data.data.url as string;
     },
     onSuccess: (url) => { window.location.href = url; },
-    onError: () => toast.error('Failed to start checkout'),
+    onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to start checkout')),
   });
 
   const portalMutation = useMutation({
@@ -74,6 +79,7 @@ export default function BillingPage() {
       return data.data.url as string;
     },
     onSuccess: (url) => { window.location.href = url; },
+    onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to open billing portal')),
   });
 
   const PLAN_ORDER = ['STARTER', 'GROWTH', 'AGENCY'];
@@ -104,7 +110,7 @@ export default function BillingPage() {
               </div>
             )}
           </div>
-          {sub.subscriptionStatus === 'ACTIVE' && (
+          {['ACTIVE', 'TRIALING', 'PAST_DUE'].includes(sub.subscriptionStatus) && (
             <button
               onClick={() => portalMutation.mutate()}
               disabled={portalMutation.isPending}
