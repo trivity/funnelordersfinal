@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, ShoppingBag, Activity, Shield, Trash2, UserX, UserCheck, Key, RefreshCw, DollarSign, Mail, CheckCircle2, Pencil, Search } from 'lucide-react';
+import { Users, ShoppingBag, Activity, Shield, Trash2, UserX, UserCheck, Key, RefreshCw, DollarSign, Mail, CheckCircle2, Pencil, Search, FlaskConical } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
@@ -286,28 +286,59 @@ interface ConfigData {
   RESEND_API_KEY?: string;
 }
 
-function ConnectedKeyBadge({ label, maskedValue, onEdit }: { label: string; maskedValue: string; onEdit: () => void }) {
+function ConnectedKeyBadge({
+  label,
+  maskedValue,
+  onEdit,
+  onTest,
+  testing,
+  passed,
+}: {
+  label: string;
+  maskedValue: string;
+  onEdit: () => void;
+  onTest?: () => void;
+  testing?: boolean;
+  passed?: boolean;
+}) {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50/60 px-4 py-3">
-      <div className="flex items-center gap-3">
-        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100">
+    <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50/60 px-4 py-3 gap-3">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 shrink-0">
           <CheckCircle2 className="w-5 h-5 text-emerald-600" />
         </div>
-        <div>
-          <p className="text-sm font-medium text-emerald-800 flex items-center gap-1.5">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-emerald-800 flex items-center gap-1.5 flex-wrap">
             {label}
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-emerald-200 text-emerald-800">Connected</span>
+            {passed && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-emerald-600 text-white animate-in fade-in zoom-in-95">
+                Pass
+              </span>
+            )}
           </p>
-          <p className="text-xs text-emerald-600/80 font-mono mt-0.5">{maskedValue}</p>
+          <p className="text-xs text-emerald-600/80 font-mono mt-0.5 truncate">{maskedValue}</p>
         </div>
       </div>
-      <button
-        onClick={onEdit}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-900 hover:bg-emerald-100 rounded-md transition-colors"
-      >
-        <Pencil className="w-3.5 h-3.5" />
-        Update Key
-      </button>
+      <div className="flex items-center gap-2 shrink-0">
+        {onTest && (
+          <button
+            onClick={onTest}
+            disabled={testing}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-900 hover:bg-emerald-100 rounded-md transition-colors disabled:opacity-50"
+          >
+            <FlaskConical className={`w-3.5 h-3.5 ${testing ? 'animate-pulse' : ''}`} />
+            {testing ? 'Testing...' : 'Test'}
+          </button>
+        )}
+        <button
+          onClick={onEdit}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-900 hover:bg-emerald-100 rounded-md transition-colors"
+        >
+          <Pencil className="w-3.5 h-3.5" />
+          Update Key
+        </button>
+      </div>
     </div>
   );
 }
@@ -381,6 +412,8 @@ function StripeConfigPanel() {
   const [syncing, setSyncing] = useState(false);
   const [editingStripeKeys, setEditingStripeKeys] = useState(false);
   const [editingResendKey, setEditingResendKey] = useState(false);
+  const [testingKey, setTestingKey] = useState<'secret_key' | 'webhook_secret' | null>(null);
+  const [passedKeys, setPassedKeys] = useState<{ secret_key?: boolean; webhook_secret?: boolean }>({});
 
   const { data: config } = useQuery<ConfigData>({
     queryKey: ['admin-config'],
@@ -399,6 +432,7 @@ function StripeConfigPanel() {
       setFields({});
       setEditingStripeKeys(false);
       setEditingResendKey(false);
+      setPassedKeys({});
       void qc.invalidateQueries({ queryKey: ['admin-config'] });
     },
     onError: () => toast.error('Failed to save configuration'),
@@ -410,6 +444,31 @@ function StripeConfigPanel() {
     if (fields.STRIPE_WEBHOOK_SECRET) updates['STRIPE_WEBHOOK_SECRET'] = fields.STRIPE_WEBHOOK_SECRET;
     if (Object.keys(updates).length === 0) { toast.info('No changes to save'); return; }
     saveMutation.mutate(updates);
+  };
+
+  const handleTestConnection = async (type: 'secret_key' | 'webhook_secret') => {
+    setTestingKey(type);
+    try {
+      const { data } = await api.post('/admin/stripe/test-connection', { type });
+      const result = data.data as { ok?: boolean; message?: string; endpointEnabled?: boolean | null };
+      if (result.ok) {
+        setPassedKeys((prev) => ({ ...prev, [type]: true }));
+        if (type === 'webhook_secret' && result.endpointEnabled === false) {
+          toast.warning(result.message ?? 'Webhook secret works, but endpoint is disabled in Stripe');
+        } else {
+          toast.success(result.message ?? 'Connection test passed');
+        }
+      } else {
+        setPassedKeys((prev) => ({ ...prev, [type]: false }));
+        toast.error('Connection test failed');
+      }
+    } catch (err: unknown) {
+      setPassedKeys((prev) => ({ ...prev, [type]: false }));
+      const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ?? 'Connection test failed';
+      toast.error(msg);
+    } finally {
+      setTestingKey(null);
+    }
   };
 
   const handleSyncPrices = async () => {
@@ -448,12 +507,18 @@ function StripeConfigPanel() {
             <ConnectedKeyBadge
               label="Secret Key"
               maskedValue={config.STRIPE_SECRET_KEY}
-              onEdit={() => setEditingStripeKeys(true)}
+              onEdit={() => { setEditingStripeKeys(true); setPassedKeys((p) => ({ ...p, secret_key: false })); }}
+              onTest={() => void handleTestConnection('secret_key')}
+              testing={testingKey === 'secret_key'}
+              passed={!!passedKeys.secret_key}
             />
             <ConnectedKeyBadge
               label="Webhook Secret"
               maskedValue={config.STRIPE_WEBHOOK_SECRET}
-              onEdit={() => setEditingStripeKeys(true)}
+              onEdit={() => { setEditingStripeKeys(true); setPassedKeys((p) => ({ ...p, webhook_secret: false })); }}
+              onTest={() => void handleTestConnection('webhook_secret')}
+              testing={testingKey === 'webhook_secret'}
+              passed={!!passedKeys.webhook_secret}
             />
           </div>
         ) : (

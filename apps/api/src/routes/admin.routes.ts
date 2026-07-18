@@ -7,7 +7,8 @@ import { createAuditLog } from '../middleware/auditLog.middleware';
 import { AppError } from '../utils/AppError';
 import { sanitizeUser } from '../services/auth.service';
 import * as appConfigService from '../services/appConfig.service';
-import { getStripe, resetStripeClient } from '../lib/stripe';
+import { getStripe, getStripeWebhookSecret, resetStripeClient } from '../lib/stripe';
+import { config } from '../lib/env';
 
 const router = Router();
 router.use(authenticate, requireAdmin);
@@ -229,6 +230,67 @@ router.patch('/config', async (req: Request, res: Response, next: NextFunction) 
       metadata: { keys: Object.keys(updates) } as Record<string, unknown>,
     });
     success(res, { message: 'Config updated', keys: Object.keys(updates) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /admin/stripe/test-connection — verify secret key or webhook secret is live
+router.post('/stripe/test-connection', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { type } = req.body as { type?: string };
+    if (type !== 'secret_key' && type !== 'webhook_secret') {
+      throw new AppError('VALIDATION_ERROR', 'type must be secret_key or webhook_secret', 400);
+    }
+
+    if (type === 'secret_key') {
+      const stripe = await getStripe();
+      const balance = await stripe.balance.retrieve();
+      success(res, {
+        ok: true,
+        type,
+        message: 'Secret key is live and authenticated with Stripe',
+        livemode: balance.livemode,
+      });
+      return;
+    }
+
+    // Webhook secret: validate format + crypto by signing/verifying a dummy payload
+    const webhookSecret = await getStripeWebhookSecret();
+    if (!webhookSecret?.startsWith('whsec_') || webhookSecret.length < 20) {
+      throw new AppError('VALIDATION_ERROR', 'Webhook secret is missing or invalid (expected whsec_...)', 400);
+    }
+
+    const stripe = await getStripe();
+    const payload = JSON.stringify({
+      id: 'evt_test_connection',
+      object: 'event',
+      type: 'ping',
+      data: { object: { id: 'test' } },
+    });
+    const header = stripe.webhooks.generateTestHeaderString({
+      payload,
+      secret: webhookSecret,
+    });
+    stripe.webhooks.constructEvent(payload, header, webhookSecret);
+
+    // Also check whether the billing webhook endpoint is enabled in Stripe
+    const expectedUrl = `${config.API_URL.replace(/\/$/, '')}/api/v1/billing/webhook`;
+    const endpoints = await stripe.webhookEndpoints.list({ limit: 100 });
+    const match = endpoints.data.find((ep) => ep.url === expectedUrl || ep.url.includes('/api/v1/billing/webhook'));
+    const endpointEnabled = match ? match.status === 'enabled' : null;
+
+    success(res, {
+      ok: true,
+      type,
+      message: endpointEnabled === false
+        ? 'Webhook secret is valid, but the Stripe endpoint is currently disabled — re-enable it in Stripe'
+        : endpointEnabled === true
+          ? 'Webhook secret is valid and the Stripe endpoint is enabled'
+          : 'Webhook secret is valid',
+      endpointEnabled,
+      endpointUrl: match?.url ?? null,
+    });
   } catch (err) {
     next(err);
   }
