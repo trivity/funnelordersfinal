@@ -10,6 +10,7 @@ import { nanoid } from 'nanoid';
 import bcrypt from 'bcryptjs';
 import { config } from '../lib/env';
 import { sendPasswordResetEmail } from '../lib/email';
+import { logger } from '../lib/logger';
 
 const router = Router();
 
@@ -76,15 +77,29 @@ router.post('/logout', async (req: Request, res: Response, next: NextFunction) =
 router.post('/forgot-password', authLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = validate(forgotPasswordSchema, req.body);
-    const user = await prisma.user.findUnique({ where: { email: body.email } });
+    const email = body.email.trim().toLowerCase();
+    const user = await prisma.user.findUnique({ where: { email } });
     if (user) {
       const token = nanoid(48);
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
       await prisma.passwordResetToken.create({ data: { userId: user.id, token, expiresAt } });
       const resetUrl = `${config.APP_URL}/reset-password?token=${token}`;
-      await sendPasswordResetEmail(user.email, resetUrl);
+      try {
+        await sendPasswordResetEmail(user.email, resetUrl);
+      } catch (emailErr) {
+        const { logger } = await import('../lib/logger');
+        logger.error('Failed to send password reset email', {
+          email: user.email,
+          error: (emailErr as Error).message,
+        });
+        throw new AppError(
+          'EMAIL_FAILED',
+          'Could not send reset email. Please try again or contact support.',
+          502,
+        );
+      }
     }
-    // Always return 200 to prevent email enumeration
+    // Always return 200 to prevent email enumeration (when user not found)
     success(res, { message: 'If that email is registered, a reset link has been sent.' });
   } catch (err) {
     next(err);

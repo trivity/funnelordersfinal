@@ -22,7 +22,8 @@ export async function register(
   firstName: string,
   lastName: string,
 ) {
-  const existing = await prisma.user.findUnique({ where: { email } });
+  const normalizedEmail = email.trim().toLowerCase();
+  const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (existing) throw new AppError('EMAIL_TAKEN', 'Email is already registered', 409);
 
   const passwordHash = await bcrypt.hash(password, 12);
@@ -34,7 +35,7 @@ export async function register(
     user = await prisma.$transaction(async (tx) => {
       const newUser = await tx.user.create({
         data: {
-          email,
+          email: normalizedEmail,
           passwordHash,
           firstName,
           lastName,
@@ -64,7 +65,8 @@ export async function login(
   ipAddress?: string,
   userAgent?: string,
 ) {
-  const user = await prisma.user.findUnique({ where: { email } });
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (!user) throw new AppError('INVALID_CREDENTIALS', 'Invalid email or password', 401);
   if (user.status === 'DELETED') throw new AppError('ACCOUNT_DELETED', 'Account not found', 401);
   if (user.status === 'SUSPENDED')

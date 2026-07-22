@@ -14,12 +14,23 @@ type FormData = z.infer<typeof schema>;
 
 export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) });
 
   const onSubmit = async (data: FormData) => {
-    await api.post('/auth/forgot-password', data).catch(() => {});
-    setSent(true);
-    toast.success('Reset link sent if email is registered.');
+    setIsLoading(true);
+    try {
+      await api.post('/auth/forgot-password', { email: data.email.trim().toLowerCase() });
+      setSent(true);
+      toast.success('If that email is registered, a reset link has been sent.');
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
+          ?.message ?? 'Failed to send reset email. Please try again.';
+      toast.error(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -41,16 +52,21 @@ export default function ForgotPasswordPage() {
                   {...register('email')}
                   type="email"
                   className="w-full border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="you@example.com"
                 />
                 {errors.email && <p className="text-destructive text-xs mt-1">{errors.email.message}</p>}
               </div>
-              <button type="submit" className="w-full bg-primary text-primary-foreground rounded-md py-2 text-sm font-medium">
-                Send reset link
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-primary text-primary-foreground rounded-md py-2 text-sm font-medium disabled:opacity-50"
+              >
+                {isLoading ? 'Sending...' : 'Send reset link'}
               </button>
             </form>
           ) : (
             <p className="text-center text-sm text-muted-foreground">
-              Check your inbox for a reset link.
+              Check your inbox for a reset link. It expires in 1 hour.
             </p>
           )}
 
